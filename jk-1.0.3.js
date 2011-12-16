@@ -25,89 +25,94 @@
  */
 
 // elements that should be scroll targets
-function jkInterestingElements() { return $("article"); }
+var jkSelector = "article";
 
 // if you want to use non-character keys for navigation, override jkCodes below
 var jkKeys = {
   NEXT: 'j',
-  PREV: 'k'
+  PREV: 'k',
 };
-
-/*****************************************************************************/
 
 // specifically set keycodes override jkKeys
 var jkCodes = {
   NEXT: jkKeys.NEXT.charCodeAt(),
-  PREV: jkKeys.PREV.charCodeAt()
+  PREV: jkKeys.PREV.charCodeAt(),
 };
 
-// worker function
-function jkExecute(event) {
-  // get the nearest (prev and next) elements of interest
-  function closest() {
-    // the elements of interest
-    items = jkInterestingElements().filter(":visible");
+/*****************************************************************************/
 
-    // defaults:
-    // we can never scroll higher than the top of the page
-    prev = $('html, body');
-    // but we can potentially scroll lower than the last item
-    next = null;
-    
-    items.each(function(index, item){
-      // cache the distance, it gets used a lot
-      itemdistance = $(item).offset().top - $(window).scrollTop();
+(function(){
 
-      // update nearest previous item
-      if(itemdistance < 0
-      && ( prev == null
-        || itemdistance > $(prev).offset().top - $(window).scrollTop()))
-      {
-        prev = item;
-      }
+  function jkInterestingElements() { return $(jkSelector); }
+  // worker function
+  function jkExecute(event) {
+    // get the nearest (prev and next) elements of interest
+    function closest() {
+      // the elements of interest
+      items = jkInterestingElements().filter(":visible");
 
-      // update nearest next item
-      if(itemdistance > 0
-      && ( next == null
-        || itemdistance < $(next).offset().top - $(window).scrollTop()))
-      {
-        next = item;
-      }
-    });
-    
-    return {next: next, prev: prev};
+      // defaults:
+      // we can never scroll higher than the top of the page
+      prev = $('html, body');
+      // but we can potentially scroll lower than the last item
+      next = null;
+
+      items.each(function(index, item){
+        // cache the distance, it gets used a lot
+        itemdistance = $(item).offset().top - $(window).scrollTop();
+
+        // update nearest previous item
+        if(itemdistance < 0
+        && ( prev == null
+          || itemdistance > $(prev).offset().top - $(window).scrollTop()))
+        {
+          prev = item;
+        }
+
+        // update nearest next item
+        if(itemdistance > 0
+        && ( next == null
+          || itemdistance < $(next).offset().top - $(window).scrollTop()))
+        {
+          next = item;
+        }
+      });
+
+      return {next: next, prev: prev};
+    }
+
+    // nothing to do if there's no code
+    if(!event.which) {
+      return;
+    }
+
+    // avoid annoying the user
+    if ($(event.target).is(':input')) {
+      return;
+    }
+
+    /*
+     * scroll to the appropriate location.
+     *
+     * could also use $('html, body').animate({scrollTop:pixels}, 'fast') but
+     * it's not very responsive.
+     */
+    if(event.which == jkCodes.NEXT
+    && closest().next != null)
+    {
+      $('html, body').scrollTop($(closest().next).offset().top);
+    }
+    if(event.which == jkCodes.PREV
+    && closest().prev != null) {
+      $('html, body').scrollTop($(closest().prev).offset().top);
+    }
   }
+
+  $(document).ready(function () {
+    $(document).bind('keypress', jkExecute);
+  });
   
-  // nothing to do if there's no code
-  if(!event.which) {
-    return;
-  }
-  
-  // avoid annoying the user
-  if ($(event.target).is(':input')) {
-    return;
-  }
-
-  /*
-   * scroll to the appropriate location.
-   *
-   * could also use $('html, body').animate({scrollTop:pixels}, 'fast') but
-   * it's not very responsive.
-   */
-  if(event.which == jkCodes.NEXT
-  && closest().next != null)
-  {
-    $('html, body').scrollTop($(closest().next).offset().top);
-  }
-  if(event.which == jkCodes.PREV
-  && closest().prev != null) {
-    $('html, body').scrollTop($(closest().prev).offset().top);
-  }
-}
-
-$(document).ready(function () {
-  $(document).bind('keypress', jkExecute);
-});
+})();
 
 /*
  * Permission is hereby granted, free of charge, to any person obtaining a copy
