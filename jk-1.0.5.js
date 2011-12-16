@@ -46,17 +46,17 @@ $(document).ready(function () {
     // get the nearest (prev and next) elements of interest
     function closest() {
       // the elements of interest
-      items = $(jkSelector).filter(":visible");
+      var items = $(jkSelector).filter(":visible");
 
       // defaults:
       // we can never scroll higher than the top of the page
-      prev = $('html, body');
+      var prev = $('html, body');
       // but we can potentially scroll lower than the last item
-      next = null;
+      var next = null;
 
       items.each(function(index, item){
         // cache the distance, it gets used a lot
-        itemdistance = $(item).offset().top - $(window).scrollTop();
+        var itemdistance = $(item).offset().top - $(window).scrollTop();
 
         // update nearest previous item
         if(itemdistance < 0
