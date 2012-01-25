@@ -3,7 +3,7 @@
  * Released under the MIT License; its terms are at the end of this file.
  *
  * This file depends on:
- * • jQuery (tested against v1.4.2)
+ * • jQuery (tested against v1.4.2 - 1.7.1)
  *   http://jquery.com/
  * • jQuery doTimeout (tested against v1.0)
  *   by "Cowboy" Ben Alman
@@ -21,7 +21,7 @@
  *   NOTE: the href in the more link must match type (2) above
  *
  * Basic logic of this file:
- * + if viewport is one page or less from the bottom of the document:
+ * + if viewport is one page or less from the bottom of the document or loading node is visible:
  *   • hide the last <article id="more">
  *   • add another containing infScrLoadingFeedback
  *   • load the next page in the background and parse it for <article>s
@@ -99,21 +99,29 @@ var infScrLoadingFeedback = '<p>loading…</p>';
       }
       return false;
     }
+
+    // get next page's loading node
+    var moreNode = $('article#more:visible').last();
+    if(moreNode.length == 0) {
+      return;
+    }
   
     /*
      * get more content if:
-     * • not already loading new content
-     * • viewport is less than one $(window).height() from bottom of document.
-     *   see: http://www.tbray.org/ongoing/When/201x/2011/11/26/Misscrolling
+     * • not already loading new content and
+     *   • viewport is less than one $(window).height() from bottom of document.
+     *     see: http://www.tbray.org/ongoing/When/201x/2011/11/26/Misscrolling
+     *   or
+     *   • loading node is visible
      */
     if(infScrState == infScrStates.idle
-    && $(document).height() < $(document).scrollTop() + (2 * $(window).height()))
+    && ($(document).height() < $(document).scrollTop() + (2 * $(window).height())
+       || moreNode.offset().top < $(window).scrollTop() + $(window).height()))
     {
       // block potentially concurrent requests
       infScrState = infScrStates.loading;
   
-      // get next page's loading node and URL
-      var moreNode = $('article#more').last();
+      // get next page's URL
       var moreURL = moreNode.find('a').last().attr("href");
   
       // make request if node was found, not hidden, and updatepath is supported
