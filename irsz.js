@@ -59,6 +59,10 @@ irsz_padding = [10, 10];
         image_toggle(this, true);
         return false;
       });
+      
+      if(irsz_auto) {
+        image_fit(this, true);
+      }
     });
   });
   
