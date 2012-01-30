@@ -65,10 +65,13 @@ infScrMoreLinkSelector = function(e) {return $(e).find('article#more a')};
           // base page in current location
           nextPage = regexp.exec(window.location.href);
           infScrUrlBasePage = nextPage[1];
-        } else {
+        } else if(regext.test(path)) {
           // use the base page number of the next page (minus one)
           nextPage = regexp.exec(path);
           infScrUrlBasePage = nextPage[1] - 1;
+        } else {
+          // console.log("page URLs do not conform to expectations.");
+          return;
         }
       }
       
@@ -111,7 +114,7 @@ infScrMoreLinkSelector = function(e) {return $(e).find('article#more a')};
       infScrState = infScrStates.loading;
   
       // get next page's URL
-      var moreURL = moreNode.attr("href"), loadingNode;
+      var moreURL = moreNode.attr("href"), loadingNode = false;
   
       // make request if node was found, not hidden, and updatepath is supported
       if(moreURL.length > 0 && moreNode.css('display') != 'none'
@@ -122,7 +125,9 @@ infScrMoreLinkSelector = function(e) {return $(e).find('article#more a')};
           url: moreURL,
           beforeSend: function() {
             // display loading feedback
-            loadingNode = moreNode.clone().empty().insertBefore(moreNode).append(infScrLoadingFeedback);
+            if(infScrLoadingFeedback.length) {
+              loadingNode = moreNode.clone().empty().insertBefore(moreNode).append(infScrLoadingFeedback);
+            }
   
             // hide 'more' browser
             moreNode.hide();
@@ -159,7 +164,9 @@ infScrMoreLinkSelector = function(e) {return $(e).find('article#more a')};
           },
           complete: function(jqXHR, textStatus) {
             // remove loading feedback
-            loadingNode.remove();
+            if(loadingNode) {
+              loadingNode.remove();
+            }
   
             // unhide 'more' browser
             moreNode.show();
