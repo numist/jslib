@@ -15,10 +15,16 @@
  * resized to fit means:
  * + if image aspect ratio is more extreme (less square) than 2:1/1:2
  *   • scale the smaller dimension between irsz_min_* and the original size,
- *     intermediates correspond to the dimension of the viewport minus irsz_padding[#]
+ *     intermediates correspond to the dimension of the viewport minus
+ *     irsz_padding[#]
  * - if the aspect ratio is sane
  *   • scale the image between irsz_min_* and the original size,
- *     intermediates fitting both dimensions within the viewport minus irsz_padding[#]
+ *     intermediates fitting both dimensions within the viewport minus
+ *     irsz_padding[#]
+ *
+ * As far as I know, the method of getting the image's actual dimensions (by
+ * making an in-memory copy) was first put forth in this form by
+ * Xavi (http://xavi.co/) at http://stackoverflow.com/a/670433
  */
 
 // disable all included resizing functions
@@ -34,51 +40,67 @@ irsz_min_width = 400,
 // automatically resize images when viewport is resized/on page load
 irsz_auto = true,
 
+// length to animate resizing transition (0 for instant, unit:ms)
+irsz_toggle_ani = 500,
+irsz_onload_ani = 0,
+
 // resize image (x, y) smaller than viewport
 irsz_padding = [10, 10];
 
 /*****************************************************************************/
 (function() {
   $(document).ready(function() {
+    // if images are not already loaded, attach a function to fire on arrival
     irsz_selector(document).load(function() {
       if(irsz_auto) {
-        image_fit(this, true);
+        image_fit(this, irsz_onload_ani);
       }
     });
     
+    // bind function to resize as needed during viewport resize
     $(window).resize(function() {
       if(irsz_auto) {
         irsz_selector(document).each(function(i, e) {
-          image_fit(e, false);
+          image_fit(e, 0);
         });
       }
     });
     
     irsz_selector(document).each(function(i, e) {
+      // attach click handler for manual zooming
       $(e).click(function(){
-        image_toggle(this, true);
+        image_toggle(this, irsz_toggle_ani);
         return false;
       });
       
+      // if iages are already loaded, fit them
       if(irsz_auto) {
-        image_fit(this, true);
+        image_fit(this, irsz_onload_ani);
       }
     });
   });
   
+  // keep images zoomed in when they were click-zoomed
+  var noresize_class = "irsz_noresize";
+
+  // get image's actual dimensions
+  function image_dimensions(image, func) {
+    $("<img/>") // Make in memory copy of image to avoid css issues
+    .attr("src", $(image).attr("src"))
+    .load(function() {func(this.width, this.height);});
+  }
+  
+  // zoom image in/out
   function image_toggle(image, animate) {
     if(!irsz_enabled) { return; }
     
-    $("<img/>") // Make in memory copy of image to avoid css issues
-    .attr("src", $(image).attr("src"))
-    .load(function() {
-      var actual_width = this.width,   // Note: $(this).width() will not
-          actual_height = this.height; // work for in-memory images.
-      
+    image_dimensions(image, function(actual_width, actual_height) {
       // check both dimensions in case there's a bug elsewhere we're resetting
       if($(image).width() < actual_width || $(image).height < actual_height) {
+        $(image).addClass(noresize_class);
         image_resize(image, actual_width, actual_height, animate);
       } else {
+        $(image).removeClass(noresize_class);
         image_fit(image, animate);
       }
     });
@@ -86,13 +108,10 @@ irsz_padding = [10, 10];
   
   function image_fit(image, animate) {
     if(!irsz_enabled) { return; }
+    if($(image).hasClass(noresize_class)) { return; }
     
-    $("<img/>") // Make in memory copy of image to avoid css issues
-    .attr("src", $(image).attr("src"))
-    .load(function() {
-      var actual_width = this.width,   // Note: $(this).width() will not
-          actual_height = this.height, // work for in-memory images.
-          aspect_ratio = Math.max(this.width / this.height, this.height / this.width),
+    image_dimensions(image, function(actual_width, actual_height) {
+      var aspect_ratio = Math.max(actual_width / actual_height, actual_height / actual_width),
           target_width = $(window).width() - irsz_padding[0],
           target_height = $(window).height() - irsz_padding[1],
           new_height = 0,
@@ -150,7 +169,7 @@ irsz_padding = [10, 10];
   }
   
   function image_resize(image, new_width, new_height, animate) {
-    if(animate) {
+    if(animate > 0) {
       $(image).animate({
           width: new_width+"px",
           height: new_height+"px"
