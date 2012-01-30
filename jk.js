@@ -37,8 +37,8 @@ jkSelector = function(e) { return $(e).find("img"); },
 
 // keycodes to watch
 jkCodes = {
-  next: [74, 40],
-  prev: [75, 38]
+  n: [74, 0], // next
+  p: [75, 1] // previous
 };
 
 /*****************************************************************************/
@@ -76,7 +76,7 @@ jkCodes = {
       // get the nearest (prev and next) elements of interest
       function closest() {
         // the elements of interest
-        var items = jkSelector().filter(":visible"),
+        var items = jkSelector(document).filter(":visible"),
   
         // defaults:
         // we can never scroll higher than the top of the page
@@ -126,12 +126,12 @@ jkCodes = {
        * could also use $('html, body').animate({scrollTop:pixels}, 'fast') but
        * it's not very responsive.
        */
-      if(in_array(composite_keycode(e), jkCodes.next)
+      if(in_array(composite_keycode(e), jkCodes.n)
       && closest().next != null)
       {
         $('html, body').scrollTop($(closest().next).offset().top);
       }
-      if(in_array(composite_keycode(e), jkCodes.prev)
+      else if(in_array(composite_keycode(e), jkCodes.p)
       && closest().prev != null) {
         $('html, body').scrollTop($(closest().prev).offset().top);
       }
