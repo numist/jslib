@@ -3,12 +3,17 @@
  * Released under the MIT License; its terms are at the end of this file.
  *
  * This file depends on:
- * • jQuery (tested against v1.4.2)
+ * • jQuery (tested against v1.4.2 - 1.7.1)
  *   http://jquery.com/
  *
  * To use this file, ensure that:
  * • jkInterestingElements() returns all available scroll targets
- * • jkKeys (or jkCodes) represent intended keybindings
+ * • jkCodes represent intended keybindings. Use http://api.jquery.com/keydown/
+ *   to get the appropriate keyCodes, and | them with the appropriate meta key
+ *   masks as prescribed by var modifier in the code below (s: shift, a: alt,
+ *   c: ctrl, m: meta). Some examples:
+ *   • 74 | 1 << 8 // capital J
+ *   • 37          // left arrow
  *
  * Inspiration provided by:
  * • jquery-jk
@@ -24,87 +29,115 @@
  *   https://github.com/nostrademons/keycode.js
  */
 
+// on/off switch
+var jkEnabled = true,
+
 // elements that should be scroll targets
-var jkSelector = "article";
+jkSelector = function(e) { return $(e).find("img"); },
 
-// if you want to use non-character keys for navigation, override jkCodes below
-var jkKeys = {
-  NEXT: 'j',
-  PREV: 'k',
-};
-
-// specifically set keycodes override jkKeys
-var jkCodes = {
-  NEXT: jkKeys.NEXT.charCodeAt(),
-  PREV: jkKeys.PREV.charCodeAt(),
+// keycodes to watch
+jkCodes = {
+  next: [74, 40],
+  prev: [75, 38]
 };
 
 /*****************************************************************************/
-
-$(document).ready(function () {
-  $(document).bind('keypress', function(event) {
-    // get the nearest (prev and next) elements of interest
-    function closest() {
-      // the elements of interest
-      var items = $(jkSelector).filter(":visible");
-
-      // defaults:
-      // we can never scroll higher than the top of the page
-      var prev = $('html, body');
-      // but we can potentially scroll lower than the last item
-      var next = null;
-
-      items.each(function(index, item){
-        // cache the distance, it gets used a lot
-        var itemdistance = $(item).offset().top - $(window).scrollTop();
-
-        // update nearest previous item
-        if(itemdistance < 0
-        && ( prev == null
-          || itemdistance > $(prev).offset().top - $(window).scrollTop()))
-        {
-          prev = item;
+(function() {
+  $(document).ready(function () {
+    var modifier = {
+      s: 1 << 8,
+      a: 1 << 9,
+      c: 1 << 10,
+      m: 1 << 11
+    },
+    keyMask = 0xFF;
+    
+    $(document).bind('keydown', function(e) {
+      if(!jkEnabled) { return; }
+      
+      function composite_keycode(e) {
+        var keycode = (e.which == null) ? e.keyCode : e.which;
+  			if(e.shiftKey) {
+    		  keycode |= modifier.s;
+    		}
+    		if(e.altKey) {
+    		  keycode |= modifier.a;
+    		}
+    		if(e.ctrlKey) {
+    		  keycode |= modifier.c;
+    		}
+    		if(e.metaKey) {
+    		  keycode |= modifier.m;
+    		}
+    		
+    		return keycode;
+      }
+      
+      // get the nearest (prev and next) elements of interest
+      function closest() {
+        // the elements of interest
+        var items = jkSelector().filter(":visible"),
+  
+        // defaults:
+        // we can never scroll higher than the top of the page
+        prev = $('html, body'),
+        // but we can potentially scroll lower than the last item
+        next = null;
+  
+        items.each(function(index, item){
+          // cache the distance, it gets used a lot
+          var itemdistance = $(item).offset().top - $(window).scrollTop();
+  
+          // update nearest previous item
+          if(itemdistance < 0
+          && ( prev == null
+            || itemdistance > $(prev).offset().top - $(window).scrollTop()))
+          {
+            prev = item;
+          }
+  
+          // update nearest next item
+          if(itemdistance > 0
+          && ( next == null
+            || itemdistance < $(next).offset().top - $(window).scrollTop()))
+          {
+            next = item;
+          }
+        });
+  
+        return {next: next, prev: prev};
+      }
+  
+      function in_array(needle, haystack) {
+        for (var i = 0; i < haystack.length; i++) {
+          if(haystack[i] == needle) { return true; }
         }
-
-        // update nearest next item
-        if(itemdistance > 0
-        && ( next == null
-          || itemdistance < $(next).offset().top - $(window).scrollTop()))
-        {
-          next = item;
-        }
-      });
-
-      return {next: next, prev: prev};
-    }
-
-    // nothing to do if there's no code
-    if(!event.which) {
-      return;
-    }
-
-    // avoid annoying the user
-    if ($(event.target).is(':input')) {
-      return;
-    }
-
-    /*
-     * scroll to the appropriate location.
-     *
-     * could also use $('html, body').animate({scrollTop:pixels}, 'fast') but
-     * it's not very responsive.
-     */
-    if(event.which == jkCodes.NEXT
-    && closest().next != null)
-    {
-      $('html, body').scrollTop($(closest().next).offset().top);
-    }
-    if(event.which == jkCodes.PREV
-    && closest().prev != null) {
-      $('html, body').scrollTop($(closest().prev).offset().top);
-    }
+        return false;
+      }
+      
+      // avoid annoying the user
+      if ($(e.target).is(':input')) {
+        return;
+      }
+  
+      /*
+       * scroll to the appropriate location.
+       *
+       * could also use $('html, body').animate({scrollTop:pixels}, 'fast') but
+       * it's not very responsive.
+       */
+      if(in_array(composite_keycode(e), jkCodes.next)
+      && closest().next != null)
+      {
+        $('html, body').scrollTop($(closest().next).offset().top);
+      }
+      if(in_array(composite_keycode(e), jkCodes.prev)
+      && closest().prev != null) {
+        $('html, body').scrollTop($(closest().prev).offset().top);
+      }
+    });
   });
-});
+})();
 
 /*
  * Permission is hereby granted, free of charge, to any person obtaining a copy

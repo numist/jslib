@@ -9,28 +9,10 @@
  *   by "Cowboy" Ben Alman
  *   http://benalman.com/projects/jquery-dotimeout-plugin/
  *
- * Pages that include this file must:
- * • support the following URI formats:
+ * Pages that include this file must support the following URI formats:
  *   (1) …/page/$w/ loads page $w
  *   (2) …/pages/$x/ loads $x pages of articles (1 - $x)
  *   (3) …/pages/$y-$z/ loads pages $y through $z
- * • provide articles on its pages enclosed in an <article> tag
- *   NOTE: nesting <article>s is not supported and has not been tested
- * • provide a last <article id="more"> containing an anchor referencing the
- *   next page in the series
- *   NOTE: the href in the more link must match type (2) above
- *
- * Basic logic of this file:
- * + if viewport is one page or less from the bottom of the document or loading node is visible:
- *   • hide the last <article id="more">
- *   • add another containing infScrLoadingFeedback
- *   • load the next page in the background and parse it for <article>s
- *   • remove the loading feedback
- *   + if articles were successfully loaded from the next page:
- *     • append them to the current page after last <article>
- *     • update history to reflect range of pages now displayed
- *   - otherwise:
- *     • unhide the last <article id="more"> to allow retry
  *
  * Original source by Alexander Micek:
  *   http://tumbledry.org/2011/05/12/screw_hashbangs_building
@@ -42,20 +24,26 @@
  * • detectHistorySupport() from Modernizr
  *   released under the MIT License.
  *   http://www.modernizr.com/download/
- *
- * Minification by http://www.refresh-sf.com/yui/
  */
 
+// on/off switch
+var infScrEnabled = true,
+
 // loading feedback used when XHR is active
-var infScrLoadingFeedback = '<p>loading…</p>';
+infScrLoadingFeedback = '<p>loading…</p>',
+
+// selector to locate items to be lazyloaded
+infScrItemSelector = function(e) {return $(e).find("article").not(":last")},
+
+// selector to locate the link to more items
+infScrMoreLinkSelector = function(e) {return $(e).find('article#more a')};
 
 /*****************************************************************************/
 (function(){
   // infScrStates = states of the InfScr system:
   var infScrStates = {
     idle: 0,    // (-> loading)
-    loading: 1, // (-> success | idle)
-    success: 2  // page updated with new posts (-> idle)
+    loading: 1  // (-> idle)
   };
   
   // infScr = current state of infinite scroll
@@ -66,6 +54,7 @@ var infScrLoadingFeedback = '<p>loading…</p>';
   
   // worker function
   function infScrExecute() {
+    if(!infScrEnabled) { return; }
     // updates browser history to reflect the new range of pages being displayed
     function updatepath(path) {
       if(infScrUrlBasePage == null) {
@@ -101,7 +90,7 @@ var infScrLoadingFeedback = '<p>loading…</p>';
     }
 
     // get next page's loading node
-    var moreNode = $('article#more:visible').last();
+    var moreNode = infScrMoreLinkSelector(document).filter(":visible").last();
     if(moreNode.length == 0) {
       return;
     }
@@ -122,7 +111,7 @@ var infScrLoadingFeedback = '<p>loading…</p>';
       infScrState = infScrStates.loading;
   
       // get next page's URL
-      var moreURL = moreNode.find('a').last().attr("href");
+      var moreURL = moreNode.attr("href"), loadingNode;
   
       // make request if node was found, not hidden, and updatepath is supported
       if(moreURL.length > 0 && moreNode.css('display') != 'none'
@@ -133,21 +122,24 @@ var infScrLoadingFeedback = '<p>loading…</p>';
           url: moreURL,
           beforeSend: function() {
             // display loading feedback
-            moreNode.clone().empty().insertBefore(moreNode).append(infScrLoadingFeedback);
+            loadingNode = moreNode.clone().empty().insertBefore(moreNode).append(infScrLoadingFeedback);
   
             // hide 'more' browser
             moreNode.hide();
           },
           success: function(data) {
             // use nodetype to grab elements
-            var filteredData = $(data).find("article");
+            var filteredData = infScrItemSelector(data);
   
             if(filteredData.length > 0) {
-              // found valid data
-              infScrState = infScrStates.success;
+              // update the address bar
+              updatepath(moreURL)
   
               // drop data into document
-              filteredData.insertAfter(moreNode);
+              filteredData.insertAfter(infScrItemSelector(document).last());
+              
+              // update the modeNode's address
+              moreNode.attr("href", infScrMoreLinkSelector(data).attr("href"));
   
               // insert and evaluate scripts unique to the page
               $(data).filter("script").each(function(index, item) {
@@ -163,20 +155,14 @@ var infScrLoadingFeedback = '<p>loading…</p>';
           			  document.body.appendChild(element);
                 }
               });
-  
-              // update the address bar
-              updatepath(moreURL)
             }
           },
           complete: function(jqXHR, textStatus) {
             // remove loading feedback
-            moreNode.prev().remove();
+            loadingNode.remove();
   
-            // if our XHR did not add data to the page,
-            if(infScrState != infScrStates.success) {
-              // unhide 'more' browser
-              moreNode.show();
-            }
+            // unhide 'more' browser
+            moreNode.show();
   
             infScrState = infScrStates.idle;
           },

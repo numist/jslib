@@ -21,15 +21,26 @@
  *     intermediates fitting both dimensions within the viewport minus irsz_padding[#]
  */
 
-var irsz_selector = "img",
-    irsz_min_height = 400,
-    irsz_min_width = 400,
-    irsz_auto = true,
-    irsz_padding = [10, 10];
+// disable all included resizing functions
+var irsz_enabled = true,
 
+// which elements the irszer should act upon
+irsz_selector = function(e) { return $(e).find("img"); },
+
+// do not act upon elements with images smaller than:
+irsz_min_height = 400,
+irsz_min_width = 400,
+
+// automatically resize images when viewport is resized/on page load
+irsz_auto = true,
+
+// resize image (x, y) smaller than viewport
+irsz_padding = [10, 10];
+
+/*****************************************************************************/
 (function() {
   $(document).ready(function() {
-    $(irsz_selector).load(function() {
+    irsz_selector(document).load(function() {
       if(irsz_auto) {
         image_fit(this, true);
       }
@@ -37,21 +48,23 @@ var irsz_selector = "img",
     
     $(window).resize(function() {
       if(irsz_auto) {
-        $(irsz_selector).each(function(i, e) {
+        irsz_selector(document).each(function(i, e) {
           image_fit(e, false);
         });
       }
     });
     
-    $(irsz_selector).each(function(i, e) {
+    irsz_selector(document).each(function(i, e) {
       $(e).click(function(){
         image_toggle(this, true);
         return false;
       });
-    })
+    });
   });
   
   function image_toggle(image, animate) {
+    if(!irsz_enabled) { return; }
+    
     $("<img/>") // Make in memory copy of image to avoid css issues
     .attr("src", $(image).attr("src"))
     .load(function() {
@@ -68,6 +81,8 @@ var irsz_selector = "img",
   }
   
   function image_fit(image, animate) {
+    if(!irsz_enabled) { return; }
+    
     $("<img/>") // Make in memory copy of image to avoid css issues
     .attr("src", $(image).attr("src"))
     .load(function() {
@@ -125,7 +140,6 @@ var irsz_selector = "img",
       }
       
       if(new_height != $(image).height() && new_height <= actual_height) {
-        //console.log("need to change size to "+new_width+"x"+new_height+", currently "+$(image).width()+"x"+$(image).height());
         image_resize(image, new_width, new_height, animate);
       }
     });
