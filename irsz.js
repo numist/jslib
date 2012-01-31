@@ -85,8 +85,10 @@ irsz_padding = [10, 10];
 
   // get image's actual dimensions
   function image_dimensions(image, func) {
+    image = $(image);
+    if(image.length != 1 || image.attr("src") == undefined) { return; }
     $("<img/>") // Make in memory copy of image to avoid css issues
-    .attr("src", $(image).attr("src"))
+    .attr("src", image.attr("src"))
     .load(function() {func(this.width, this.height);});
   }
   
@@ -173,7 +175,7 @@ irsz_padding = [10, 10];
       $(image).animate({
           width: new_width+"px",
           height: new_height+"px"
-      }, 1500 );
+      }, animate);
     } else {
       image.style.height = new_height+"px";
       image.style.width = new_width+"px";
