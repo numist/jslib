@@ -5,6 +5,8 @@
  * This file depends on:
  * • jQuery (tested against 1.7.1)
  *   http://jquery.com/
+ * • String.prototype.endsWith
+ *   from https://github.com/numist/jslib/blob/master/String.prototypes.js
  *
  * Basic logic of this file:
  * + if irsz_auto is true
@@ -25,6 +27,10 @@
  * As far as I know, the method of getting the image's actual dimensions (by
  * making an in-memory copy) was first put forth in this form by
  * Xavi (http://xavi.co/) at http://stackoverflow.com/a/670433
+ * This adapted version, the image_dimensions wrapper function, caches image
+ * dimensions in the attributes max-width and max-height by default, and can be
+ * preset by the server in order to prevent jerky resizing when an image loads
+ * progressively.
  */
 
 // disable all included resizing functions
@@ -81,15 +87,39 @@ irsz_padding = [10, 10];
   });
   
   // keep images zoomed in when they were click-zoomed
-  var noresize_class = "irsz_noresize";
+  var noresize_class = "irsz_noresize",
+  
+  // dimensional values in this file are pixels
+      units = "px";
 
   // get image's actual dimensions
   function image_dimensions(image, func) {
+    var attr_width = "max-width", attr_height = "max-height", image_width, image_height;
     image = $(image);
     if(image.length != 1 || image.attr("src") == undefined) { return; }
-    $("<img/>") // Make in memory copy of image to avoid css issues
-    .attr("src", image.attr("src"))
-    .load(function() {func(this.width, this.height);});
+    
+    if(image.filter("["+attr_width+"]["+attr_height+"]").length == 1) {
+      // found cached/supplied image dimensions
+      var pixels_width, pixels_height;
+      image_width = image.attr(attr_width);
+      pixels_width = parseInt(image_width.endsWith(units)
+                            ? image_width.substr(0, image_width.lastIndexOf(units))
+                            : image_width);
+      image_height = image.attr(attr_height);
+      pixels_height = parseInt(image_height.endsWith(units)
+                             ? image_height.substr(0, image_height.lastIndexOf(units))
+                             : image_height);
+      func(pixels_width, pixels_height);
+    } else {
+      // get dimensions from image. make a copy in memory to avoid css issues.
+      $("<img/>")
+        .attr("src", image.attr("src"))
+        .load(function() {
+          image_width = this.width, image_height = this.height;
+          image.attr(attr_width, image_width+units).attr(attr_height, image_height+units);
+          func(image_width, image_height);
+        });
+    }
   }
   
   // zoom image in/out
@@ -173,12 +203,12 @@ irsz_padding = [10, 10];
   function image_resize(image, new_width, new_height, animate) {
     if(animate > 0) {
       $(image).animate({
-          width: new_width+"px",
-          height: new_height+"px"
+          width: new_width+units,
+          height: new_height+units
       }, animate);
     } else {
-      image.style.height = new_height+"px";
-      image.style.width = new_width+"px";
+      image.style.height = new_height+units;
+      image.style.width = new_width+units;
     }
   }
 })();
