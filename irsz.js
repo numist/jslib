@@ -51,7 +51,11 @@ irsz_toggle_ani = 500,
 irsz_onload_ani = 0,
 
 // resize image (x, y) smaller than viewport
-irsz_padding = [10, 10];
+irsz_padding = [10, 10],
+
+// custom cursors for when the click action on the image is resize, not the default action.
+irsz_cursor_zoom_in = "auto", // url(/graphics/zoom_in.cur),default
+irsz_cursor_zoom_out = "auto"; // url(/graphics/zoom_out.cur),default
 
 /*****************************************************************************/
 (function() {
@@ -75,8 +79,9 @@ irsz_padding = [10, 10];
     irsz_selector(document).each(function(i, e) {
       // attach click handler for manual zooming
       $(e).click(function(){
+        var prevwidth = $(this).width();
         image_toggle(this, irsz_toggle_ani);
-        return false;
+        return prevwidth == $(this).width();
       });
       
       // if iages are already loaded, fit them
@@ -87,14 +92,11 @@ irsz_padding = [10, 10];
   });
   
   // keep images zoomed in when they were click-zoomed
-  var noresize_class = "irsz_noresize",
-  
-  // dimensional values in this file are pixels
-      units = "px";
+  var noresize_class = "irsz_noresize";
 
   // get image's actual dimensions
   function image_dimensions(image, func) {
-    var attr_width = "max-width", attr_height = "max-height", image_width, image_height;
+    var attr_width = "max-width", attr_height = "max-height", units = "px", image_width, image_height;
     image = $(image);
     if(image.length != 1 || image.attr("src") == undefined) { return; }
     
@@ -122,14 +124,18 @@ irsz_padding = [10, 10];
     }
   }
   
+  function resetcursor(image) { setcursor(image, "auto"); }
+  function setcursor(image, style) { image.style.cursor = style; }
+  
   // zoom image in/out
   function image_toggle(image, animate) {
-    if(!irsz_enabled) { return; }
+    if(!irsz_enabled) { resetcursor(image); return; }
     
     image_dimensions(image, function(actual_width, actual_height) {
       // check both dimensions in case there's a bug elsewhere we're resetting
       if($(image).width() < actual_width || $(image).height < actual_height) {
         $(image).addClass(noresize_class);
+        setcursor(image, irsz_cursor_zoom_out);
         image_resize(image, actual_width, actual_height, animate);
       } else {
         $(image).removeClass(noresize_class);
@@ -139,12 +145,10 @@ irsz_padding = [10, 10];
   }
   
   function image_fit(image, animate) {
-    if(!irsz_enabled) { return; }
-    if($(image).hasClass(noresize_class)) { return; }
+    if(!irsz_enabled) { resetcursor(image); return; }
     
     image_dimensions(image, function(actual_width, actual_height) {
-      var aspect_ratio = Math.max(actual_width / actual_height, actual_height / actual_width),
-          target_width = $(window).width() - irsz_padding[0],
+      var target_width = $(window).width() - irsz_padding[0],
           target_height = $(window).height() - irsz_padding[1],
           new_height = 0,
           new_width = 0,
@@ -161,54 +165,65 @@ irsz_padding = [10, 10];
         return Math.round(actual_height * width / actual_width);
       }
       
-      if(aspect_ratio > 2) {
-        // if ratio > 2, check and fit to *smaller* image dimension (assume image intended to be scrolled)
-        if(actual_width < actual_height) {
-          new_width = target_width > irsz_min_width ? target_width : irsz_min_width;
-          new_height = compute_height(new_width);
-        } else {
-          new_height = target_height > irsz_min_height ? target_height : irsz_min_height;
-          new_width = compute_width(new_height);
-        }
+      // fit image entirely within viewport
+      w_width = target_width > irsz_min_width ? target_width : irsz_min_width;
+      w_height = compute_height(w_width);
+      h_height = target_height > irsz_min_height ? target_height : irsz_min_height;
+      h_width = compute_width(h_height);
+      
+      // do not enlarge image beyond its limits
+      w_width = w_width < actual_width ? w_width : actual_width;
+      w_height = w_height < actual_height ? w_height : actual_height;
+      h_width = h_width < actual_width ? h_width : actual_width;
+      h_height = h_height < actual_height ? h_height : actual_height;
+      
+      // fit image entirely in viewport
+      if(w_height > h_height) {
+        // width-based dimensions are too tall
+        new_width = h_width;
+        new_height = h_height;
       } else {
-        // fit image entirely within viewport
-        w_width = target_width > irsz_min_width ? target_width : irsz_min_width;
-        w_height = compute_height(w_width);
-        h_height = target_height > irsz_min_height ? target_height : irsz_min_height;
-        h_width = compute_width(h_height);
-        
-        // do not enlarge image beyond its limits
-        w_width = w_width < actual_width ? w_width : actual_width;
-        w_height = w_height < actual_height ? w_height : actual_height;
-        h_width = h_width < actual_width ? h_width : actual_width;
-        h_height = h_height < actual_height ? h_height : actual_height;
-
-        if(w_height > h_height) {
-          // width-based dimensions are too tall
-          new_width = h_width;
-          new_height = h_height;
-        } else {
-          // height-based dimensions are too wide/just right
-          new_width = w_width;
-          new_height = w_height;
-        }
+        // height-based dimensions are too wide/just right
+        new_width = w_width;
+        new_height = w_height;
       }
       
-      if(new_height != $(image).height() && new_height <= actual_height) {
+      // image toggle blocker
+      if($(image).hasClass(noresize_class)) {
+        if(new_height < actual_height && new_width < actual_width) {
+          setcursor(image, irsz_cursor_zoom_out);
+        } else {
+          resetcursor(image);
+        }
+        return;
+      }
+      
+      // resize image
+      if(new_height != $(image).height()) {
+        if(new_height < actual_height) {
+          setcursor(image, irsz_cursor_zoom_in);
+        } else {
+          resetcursor(image);
+        }
         image_resize(image, new_width, new_height, animate);
       }
     });
   }
   
   function image_resize(image, new_width, new_height, animate) {
-    if(animate > 0) {
+    var old_width = $(image).width(), old_height = $(image).height();
+    if(animate) {
       $(image).animate({
-          width: new_width+units,
-          height: new_height+units
-      }, animate);
+          width: new_width+"px",
+          height: new_height+"px"
+      }, 1500 );
     } else {
-      image.style.height = new_height+units;
-      image.style.width = new_width+units;
+      image.style.height = new_height+"px";
+      image.style.width = new_width+"px";
+    }
+    // propagate an event to support add-on features
+    if(new_width != old_width || new_height != old_height) {
+      $(image).resize();
     }
   }
 })();
