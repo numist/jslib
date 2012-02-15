@@ -105,10 +105,16 @@
       self.each(function() {
         $(this).bind("click.irsz", function(e) {
           var target = $(e.target);
-          var prevwidth = target.width();
+          var prevWidth = target.width();
+          var percentScrollY = e.offsetY / target.height();
+          var percentScrollX = e.offsetX / target.width();
           image_toggle(target.get(0));
-          if (prevwidth != target.width()) {
+          if (prevWidth != target.width()) {
             e.preventDefault();
+            if (prevWidth < target.width()) {
+              $(window).scrollTop((target.height() * percentScrollY) + target.offset().top - e.clientY);
+              $(window).scrollLeft((target.width() * percentScrollX) + target.offset().left - e.clientX);
+            }
           }
           return true;
         });
