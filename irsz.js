@@ -112,8 +112,8 @@
           if (prevWidth != target.width()) {
             e.preventDefault();
             if (prevWidth < target.width()) {
-              $(window).scrollTop((target.height() * percentScrollY) + target.offset().top - e.clientY);
-              $(window).scrollLeft((target.width() * percentScrollX) + target.offset().left - e.clientX);
+              $(window).scrollTop((target.height() * percentScrollY) + target.offset().top - ($(window).height() / 2));
+              $(window).scrollLeft((target.width() * percentScrollX) + target.offset().left - ($(window).width() / 2));
             }
           }
           return true;
