@@ -27,6 +27,7 @@
  *   padding: [10, 10],
  *
  *   // custom cursors for when the click action on the image is resize, not the default action.
+ *   // when possible, browser-provided cursors will be used.
  *   cursor_zoom_in: "auto", // url(/graphics/zoom_in.cur),default
  *   cursor_zoom_out: "auto", // url(/graphics/zoom_out.cur),default
  *
@@ -204,8 +205,29 @@
   }
   
   // manipulate the user's cursor
-  function resetcursor(image) { setcursor(image, "auto"); }
-  function setcursor(image, style) { image.style.cursor = style; }
+  function resetcursor(image) { image.style.cursor = "auto"; }
+  function zoomincursor(image) {
+    $(image).css('cursor', function() {
+        if($.browser.mozilla) {
+            return '-moz-zoom-in';
+        } else if($.browser.webkit) {
+            return '-webkit-zoom-in';
+        } else {
+            return self.data("irsz").cursor_zoom_in;
+        }
+    });
+  }
+  function zoomoutcursor(image) {
+    $(image).css('cursor', function() {
+        if($.browser.mozilla) {
+            return '-moz-zoom-out';
+        } else if($.browser.webkit) {
+            return '-webkit-zoom-out';
+        } else {
+            return self.data("irsz").cursor_zoom_out;
+        }
+    });
+  }
   
   // zoom image in/out
   function image_toggle(image) {
@@ -213,7 +235,7 @@
       // check both dimensions in case there's a bug elsewhere we're resetting
       if($(image).width() < actual_width || $(image).height < actual_height) {
         $(image).addClass(self.data("irsz").noresize_class);
-        setcursor(image, self.data("irsz").cursor_zoom_out);
+        zoomoutcursor(image);
         image_resize(image, actual_width, actual_height);
       } else {
         $(image).removeClass(self.data("irsz").noresize_class);
@@ -268,7 +290,7 @@
       // image toggle blocker
       if($(image).hasClass(self.data("irsz").noresize_class)) {
         if(new_height < actual_height && new_width < actual_width) {
-          setcursor(image, self.data("irsz").cursor_zoom_out);
+          zoomoutcursor(image);
         } else {
           resetcursor(image);
         }
@@ -278,7 +300,7 @@
       // resize image
       if(new_height != $(image).height()) {
         if(new_height < actual_height) {
-          setcursor(image, self.data("irsz").cursor_zoom_in);
+          zoomincursor(image);
         } else {
           resetcursor(image);
         }
